@@ -5,11 +5,13 @@ description = ""
 authors = ["Georg Schenzel <Schenzel.Georg@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.11"
 pytube = "^12.1.0"
 python-telnet-vlc = "^2.0.1"
 mutagen = "^1.45.1"
 ffmpeg-python = "^0.2.0"
+spotipy = "^2.20.0"
+spotdl = "4.0.0rc2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
