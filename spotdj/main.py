@@ -2,7 +2,9 @@ import asyncio
 import concurrent.futures
 import subprocess
 import time
+from pathlib import Path
 
+import ffmpeg
 import mutagen
 from python_telnet_vlc import VLCTelnet
 from pytube import Search, YouTube
@@ -44,6 +46,9 @@ async def _aggregate_tasks(tasks):
     return await asyncio.gather(*(task for task in tasks))
 
 
+def create_file_name():
+    return "{artist} - {title}.{ext}".format(artist="Robbie Doherty & Keees.", title="Pour The Milk", ext="mp3")
+
 options_to_show = 5
 
 loop = asyncio.new_event_loop()
@@ -64,27 +69,28 @@ for i in range(options_to_show):
 
 paths = list(loop.run_until_complete(_aggregate_tasks(tasks)))
 
-# workaround to fix first song not showing metadata in vlc
-v.add(paths[0])
-v.clear()
-
 for path in paths:
-    v.add(path)
-    v.play()
-
-time.sleep(0.5)
-v.pause()
+    v.enqueue(path)
 
 # keep alive
-playing = {"playing", "paused"}
-play = True
-while play:
+playing = {"playing", "stopped"}
+while v.status()["state"] in playing:
     time.sleep(0.5)
-    state = v.status()["state"]
-    if state in playing:
-        continue
-    else:
-        play = False
+
+nr = v.info()["data"]["track_number"]
+
+v.clear()
+
+chosen_path = paths[int(nr)]
+(
+    ffmpeg
+    .input(chosen_path)
+    .output(create_file_name())
+    .run(quiet=True, overwrite_output=True)
+)
+
+for path in paths:
+    Path(path).unlink()
 
 v.shutdown()
 
