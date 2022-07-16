@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import List
 
 import mutagen
+import requests
+from mutagen.mp4 import MP4Cover
 from pytube import YouTube, StreamQuery
 
 
@@ -39,10 +41,17 @@ class Downloader:
         audio_stream = streams.get_audio_only()
         path = audio_stream.download(output_path=str(self.location), filename_prefix="{} ".format(result_number))
 
+
+
         mutagen_file = mutagen.File(path, easy=True)
         mutagen_file["artist"] = yt.author
         mutagen_file["tracknumber"] = str(result_number)
         mutagen_file["description"] = "Bitrate: {}, Views: {}".format(audio_stream.abr, human_format(yt.views))
+        mutagen_file.save()
+
+        thumbnail_data = requests.get(yt.thumbnail_url).content
+        mutagen_file = mutagen.File(path)
+        mutagen_file["covr"] = [MP4Cover(thumbnail_data)]
         mutagen_file.save()
 
         return Path(path)
