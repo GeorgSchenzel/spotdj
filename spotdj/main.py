@@ -1,8 +1,11 @@
+import asyncio
+import concurrent.futures
+from asyncio import Semaphore
 from pathlib import Path
 from typing import List
 
 from pytube import Search, YouTube
-from spotdl import Spotdl
+from spotdl import Spotdl, Song
 from spotdl.types import Playlist
 from spotdl.utils.config import DEFAULT_CONFIG
 from spotdl.utils.formatter import create_file_name, create_search_query
@@ -13,40 +16,65 @@ from spotdj.vlc import Vlc
 from spotdj.vlc_selector import VlcSelector
 
 
-def filter_results(results: List[YouTube]) -> List[YouTube]:
-    def allow(yt: YouTube):
-        if yt.length > 60 * 15:
-            return False
 
-        return True
+class Spotdj:
+    def __init__(self):
+        self.thread_executor = concurrent.futures.ThreadPoolExecutor()
+        self.song_prefetch_semaphore = Semaphore(3)
 
-    return [r for r in results if allow(r)]
+        self.spotdl = Spotdl(client_id=DEFAULT_CONFIG["client_id"], client_secret=DEFAULT_CONFIG["client_secret"])
 
+        self.vlc = Vlc()
+        self.vlc_selector = VlcSelector(self.vlc)
 
-spotdl = Spotdl(client_id=DEFAULT_CONFIG["client_id"], client_secret=DEFAULT_CONFIG["client_secret"])
-vlc = Vlc()
-vlc_selector = VlcSelector(vlc)
-converter = Converter()
+        self.converter = Converter(self.thread_executor)
+        self.downloader = Downloader(Path("./tmp"), self.thread_executor)
 
-downloader = Downloader(Path("./tmp"))
+    def __enter__(self):
+        return self
+
+    async def download_playlist(self, playlist_url: str):
+        playlist = Playlist.from_url(playlist_url)
+
+        tasks = []
+        for song in playlist.songs:
+            filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
+            if filename.exists():
+                print("Skipping {}".format(song.display_name))
+                continue
+
+            tasks.append(self.download_song(song, filename))
+
+        await asyncio.gather(*tasks)
+
+    async def download_song(self, song: Song, filename: Path):
+        async with self.song_prefetch_semaphore:
+            results = Search(create_search_query(song, "{artist} - {title}", False)).results
+            results = self.filter_results(results)
+
+            paths = await self.downloader.download_async(results[:5])
+            chosen = await self.vlc_selector.choose_from(paths)
+            self.converter.to_mp3(paths[chosen], filename)
+
+            for path in paths:
+                path.unlink()
+
+    @staticmethod
+    def filter_results(results: List[YouTube]) -> List[YouTube]:
+        def allow(yt: YouTube):
+            if yt.length > 60 * 15:
+                return False
+
+            return True
+
+        return [r for r in results if allow(r)]
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.vlc.stop()
+
 
 playlist_url = "https://open.spotify.com/playlist/08sR2Q2jOLwgo7SylDtZIq?si=50c22033a8624e9e"
-playlist = Playlist.from_url(playlist_url)
 
-for song in playlist.songs:
-    filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
-    if filename.exists():
-        print("Skipping {}".format(song.display_name))
-        continue
+with Spotdj() as spotdj:
+    asyncio.run(spotdj.download_playlist(playlist_url))
 
-    results = Search(create_search_query(song, "{artist} - {title}", False)).results
-    results = filter_results(results)
-
-    paths = downloader.download(results[:5])
-    chosen = vlc_selector.choose_from(paths)
-    converter.to_mp3(paths[chosen], filename)
-
-    for path in paths:
-        path.unlink()
-
-vlc.stop()

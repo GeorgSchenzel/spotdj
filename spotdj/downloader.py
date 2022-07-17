@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List
 
@@ -18,30 +19,17 @@ def human_format(num) -> str:
     return '%.2f%s' % (num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
 
 
-async def _aggregate_tasks(tasks):
-    """
-    Aggregate the futures and return the results
-    """
-
-    return await asyncio.gather(*(task for task in tasks))
-
-
 class Downloader:
 
-    def __init__(self, location: Path):
+    def __init__(self, location: Path, executor: ThreadPoolExecutor):
         self.location = location
         self.threads = 5
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        self.thread_executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.threads)
+        self.executor = executor
 
     def download_search_result(self, result_number: int, yt: YouTube) -> Path:
         streams = StreamQuery(yt.fmt_streams)
         audio_stream = streams.get_audio_only()
         path = audio_stream.download(output_path=str(self.location), filename_prefix="{} ".format(result_number))
-
-
 
         mutagen_file = mutagen.File(path, easy=True)
         mutagen_file["artist"] = yt.author
@@ -56,12 +44,12 @@ class Downloader:
 
         return Path(path)
 
-    async def download_search_result_pooled(self, result_number: int, yt: YouTube):
-        return await self.loop.run_in_executor(self.thread_executor, self.download_search_result, result_number, yt)
+    async def download_search_result_async(self, result_number: int, yt: YouTube) -> Path:
+        return await asyncio.get_event_loop().run_in_executor(self.executor, self.download_search_result, result_number, yt)
 
-    def download(self, yts: List[YouTube]) -> List[Path]:
+    async def download_async(self, yts: List[YouTube]) -> List[Path]:
         tasks = []
         for i, yt in enumerate(yts):
-            tasks.append(self.download_search_result_pooled(i, yt))
+            tasks.append(self.download_search_result_async(i, yt))
 
-        return list(self.loop.run_until_complete(_aggregate_tasks(tasks)))
+        return list(await asyncio.gather(*tasks))
