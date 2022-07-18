@@ -49,6 +49,7 @@ class Spotdj:
                 filename = Path(self.database[song.song_id]["filename"])
                 if filename.exists():
                     print("Skipping {}".format(song.display_name))
+                    continue
                 else:
                     del self.database[song.song_id]
 
@@ -74,7 +75,8 @@ class Spotdj:
             chosen = await self.vlc_selector.choose_from(song, paths)
 
             filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
-            self.converter.to_mp3(paths[chosen], filename)
+
+            await self.converter.to_mp3_async(paths[chosen], filename)
 
             for path in paths:
                 path.unlink()

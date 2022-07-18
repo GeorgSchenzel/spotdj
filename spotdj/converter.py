@@ -21,5 +21,4 @@ class Converter:
 
     async def to_mp3_async(self, input_path: Path, output_path: Path):
         async with self.semaphore:
-            asyncio.get_event_loop().run_in_executor(self.executor, self.to_mp3, input_path, output_path)
-
+            await asyncio.get_event_loop().run_in_executor(self.executor, self.to_mp3, input_path, output_path)

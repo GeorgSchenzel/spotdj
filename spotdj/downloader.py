@@ -26,7 +26,6 @@ class Downloader:
         self.executor = executor
 
     def download_search_result(self, result_number: int, yt: YouTube) -> Path:
-        print("Downloading {} {}".format(result_number, yt.title))
         streams = StreamQuery(yt.fmt_streams)
         audio_stream = streams.get_audio_only()
         path = audio_stream.download(output_path=str(self.location), filename_prefix="{} ".format(result_number))
@@ -52,5 +51,4 @@ class Downloader:
         for i, yt in enumerate(yts):
             tasks.append(self.download_search_result_async(i, yt))
 
-        print("gather download")
         return list(await asyncio.gather(*tasks))
