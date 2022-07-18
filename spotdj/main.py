@@ -96,7 +96,12 @@ class Spotdj:
         return [r for r in results if allow(r)]
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.vlc.stop()
+        try:
+            self.vlc.stop()
+        except ConnectionAbortedError:
+            pass
+
+        self.downloader.cleanup()
 
 
 playlist_url = "https://open.spotify.com/playlist/08sR2Q2jOLwgo7SylDtZIq?si=50c22033a8624e9e"

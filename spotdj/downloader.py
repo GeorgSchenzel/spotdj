@@ -24,6 +24,7 @@ class Downloader:
         self.location = location
         self.threads = 5
         self.executor = executor
+        self.paths = []
 
     def download_search_result(self, result_number: int, yt: YouTube) -> Path:
         streams = StreamQuery(yt.fmt_streams)
@@ -44,7 +45,10 @@ class Downloader:
         return Path(path)
 
     async def download_search_result_async(self, result_number: int, yt: YouTube) -> Path:
-        return await asyncio.get_event_loop().run_in_executor(self.executor, self.download_search_result, result_number, yt)
+        path = await asyncio.get_event_loop().run_in_executor(self.executor, self.download_search_result, result_number, yt)
+        self.paths.append(path)
+
+        return path
 
     async def download_async(self, yts: List[YouTube]) -> List[Path]:
         tasks = []
@@ -52,3 +56,7 @@ class Downloader:
             tasks.append(self.download_search_result_async(i, yt))
 
         return list(await asyncio.gather(*tasks))
+
+    def cleanup(self):
+        for path in self.paths:
+            path.unlink()
