@@ -47,9 +47,18 @@ class Spotdj:
 
         await asyncio.gather(*tasks)
 
+    def search(self, query: str) -> List[YouTube]:
+        results = Search(query).results[:5]
+        for yt in results:
+            _ = yt.vid_info
+        return results
+
+    async def search_async(self, query: str) -> List[YouTube]:
+        return await asyncio.get_event_loop().run_in_executor(self.thread_executor, self.search, query)
+
     async def download_song(self, song: Song, filename: Path):
         async with self.song_prefetch_semaphore:
-            results = Search(create_search_query(song, "{artist} - {title}", False)).results
+            results = await self.search_async(create_search_query(song, "{artist} - {title}", False))
             results = self.filter_results(results)
 
             paths = await self.downloader.download_async(results[:5])
