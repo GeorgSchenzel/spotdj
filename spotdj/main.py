@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import json
 from asyncio import Semaphore
 from pathlib import Path
 from typing import List
@@ -30,6 +31,12 @@ class Spotdj:
         self.converter = Converter(self.thread_executor)
         self.downloader = Downloader(Path("./tmp"), self.thread_executor)
 
+        self.database = {}
+        self.database_path = Path("./spotdj.json")
+        if self.database_path.exists():
+            with open(self.database_path, "r") as openfile:
+                self.database = json.load(openfile)
+
     def __enter__(self):
         return self
 
@@ -38,12 +45,14 @@ class Spotdj:
 
         tasks = []
         for song in playlist.songs:
-            filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
-            if filename.exists():
-                print("Skipping {}".format(song.display_name))
-                continue
+            if song.song_id in self.database:
+                filename = Path(self.database[song.song_id]["filename"])
+                if filename.exists():
+                    print("Skipping {}".format(song.display_name))
+                else:
+                    del self.database[song.song_id]
 
-            tasks.append(self.download_song(song, filename))
+            tasks.append(self.download_song(song))
 
         await asyncio.gather(*tasks)
 
@@ -56,17 +65,23 @@ class Spotdj:
     async def search_async(self, query: str) -> List[YouTube]:
         return await asyncio.get_event_loop().run_in_executor(self.thread_executor, self.search, query)
 
-    async def download_song(self, song: Song, filename: Path):
+    async def download_song(self, song: Song):
         async with self.song_prefetch_semaphore:
             results = await self.search_async(create_search_query(song, "{artist} - {title}", False))
             results = self.filter_results(results)
 
             paths = await self.downloader.download_async(results[:5])
-            chosen = await self.vlc_selector.choose_from(paths)
+            chosen = await self.vlc_selector.choose_from(song, paths)
+
+            filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
             self.converter.to_mp3(paths[chosen], filename)
 
             for path in paths:
                 path.unlink()
+
+            self.database[song.song_id] = {"filename": str(filename), "url": results[chosen].watch_url}
+            with open(self.database_path, "w+") as outfile:
+                json.dump(self.database, outfile)
 
     @staticmethod
     def filter_results(results: List[YouTube]) -> List[YouTube]:
@@ -86,4 +101,3 @@ playlist_url = "https://open.spotify.com/playlist/08sR2Q2jOLwgo7SylDtZIq?si=50c2
 
 with Spotdj() as spotdj:
     asyncio.run(spotdj.download_playlist(playlist_url))
-
