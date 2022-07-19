@@ -24,7 +24,7 @@ class Downloader:
         self.location = location
         self.threads = 5
         self.executor = executor
-        self.paths = []
+        self.paths = [] # type: List[Path]
 
     def download_search_result(self, result_number: int, yt: YouTube) -> Path:
         streams = StreamQuery(yt.fmt_streams)
@@ -59,4 +59,5 @@ class Downloader:
 
     def cleanup(self):
         for path in self.paths:
-            path.unlink()
+            if path.exists():
+                path.unlink()
