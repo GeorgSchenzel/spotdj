@@ -13,6 +13,7 @@ from spotdl.utils.formatter import create_file_name, create_search_query
 from spotdl.utils.metadata import set_id3_mp3
 
 from spotdj.converter import Converter
+from spotdj.database import Database, SongEntry
 from spotdj.downloader import Downloader
 from spotdj.searcher import Searcher
 from spotdj.vlc import Vlc
@@ -25,20 +26,15 @@ class Spotdj:
         self.thread_executor = concurrent.futures.ThreadPoolExecutor()
         self.song_prefetch_semaphore = Semaphore(3)
 
-        self.spotdl = Spotdl(client_id=DEFAULT_CONFIG["client_id"], client_secret=DEFAULT_CONFIG["client_secret"])
+        self.database = Database(Path("./spotdj.json"))
 
+        self.spotdl = Spotdl(client_id=DEFAULT_CONFIG["client_id"], client_secret=DEFAULT_CONFIG["client_secret"])
         self.vlc = Vlc()
         self.vlc_selector = VlcSelector(self.vlc)
 
         self.searcher = Searcher(self.thread_executor, additional_queries=["extended", "club"])
         self.downloader = Downloader(Path("./tmp"), self.thread_executor)
         self.converter = Converter(self.thread_executor)
-
-        self.database = {}
-        self.database_path = Path("./spotdj.json")
-        if self.database_path.exists():
-            with open(self.database_path, "r") as openfile:
-                self.database = json.load(openfile)
 
     def __enter__(self):
         return self
@@ -48,19 +44,17 @@ class Spotdj:
 
         tasks = []
         for song in playlist.songs:
-            if song.song_id in self.database:
-                filename = Path(self.database[song.song_id]["filename"])
-                if filename.exists():
+            song_entry = self.database.get_song(song.song_id)
+            if song_entry is not None:
+                if song_entry.filename.exists():
                     print("Skipping {}".format(song.display_name))
                     continue
                 else:
-                    del self.database[song.song_id]
+                    self.database.delete_song(song.song_id)
 
             tasks.append(self.download_song(song))
 
         await asyncio.gather(*tasks)
-
-
 
     async def download_song(self, song: Song):
         async with self.song_prefetch_semaphore:
@@ -79,9 +73,7 @@ class Spotdj:
             for path in paths:
                 path.unlink()
 
-            self.database[song.song_id] = {"filename": str(filename), "url": results[chosen].watch_url}
-            with open(self.database_path, "w+") as outfile:
-                json.dump(self.database, outfile)
+            self.database.store_song(SongEntry(song.song_id, filename, results[chosen].watch_url))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
