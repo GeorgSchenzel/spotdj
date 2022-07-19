@@ -10,6 +10,7 @@ from spotdl import Spotdl, Song
 from spotdl.types import Playlist
 from spotdl.utils.config import DEFAULT_CONFIG
 from spotdl.utils.formatter import create_file_name, create_search_query
+from spotdl.utils.metadata import set_id3_mp3
 
 from spotdj.converter import Converter
 from spotdj.downloader import Downloader
@@ -77,6 +78,10 @@ class Spotdj:
             filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
 
             await self.converter.to_mp3_async(paths[chosen], filename)
+
+            # store the spotify song id as a comment
+            song.download_url = song.song_id
+            set_id3_mp3(filename, song)
 
             for path in paths:
                 path.unlink()
