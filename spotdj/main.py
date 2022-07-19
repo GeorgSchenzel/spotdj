@@ -14,6 +14,7 @@ from spotdl.utils.metadata import set_id3_mp3
 
 from spotdj.converter import Converter
 from spotdj.downloader import Downloader
+from spotdj.searcher import Searcher
 from spotdj.vlc import Vlc
 from spotdj.vlc_selector import VlcSelector
 
@@ -29,8 +30,9 @@ class Spotdj:
         self.vlc = Vlc()
         self.vlc_selector = VlcSelector(self.vlc)
 
-        self.converter = Converter(self.thread_executor)
+        self.searcher = Searcher(self.thread_executor, additional_queries=["extended", "club"])
         self.downloader = Downloader(Path("./tmp"), self.thread_executor)
+        self.converter = Converter(self.thread_executor)
 
         self.database = {}
         self.database_path = Path("./spotdj.json")
@@ -58,21 +60,12 @@ class Spotdj:
 
         await asyncio.gather(*tasks)
 
-    def search(self, query: str) -> List[YouTube]:
-        results = Search(query).results[:5]
-        for yt in results:
-            _ = yt.vid_info
-        return results
 
-    async def search_async(self, query: str) -> List[YouTube]:
-        return await asyncio.get_event_loop().run_in_executor(self.thread_executor, self.search, query)
 
     async def download_song(self, song: Song):
         async with self.song_prefetch_semaphore:
-            results = await self.search_async(create_search_query(song, "{artist} - {title}", False))
-            results = self.filter_results(results)
-
-            paths = await self.downloader.download_async(results[:5])
+            results = await self.searcher.search_async(create_search_query(song, "{artist} - {title}", False))
+            paths = await self.downloader.download_async(results)
             chosen = await self.vlc_selector.choose_from(song, paths)
 
             filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
@@ -90,16 +83,6 @@ class Spotdj:
             with open(self.database_path, "w+") as outfile:
                 json.dump(self.database, outfile)
 
-    @staticmethod
-    def filter_results(results: List[YouTube]) -> List[YouTube]:
-        def allow(yt: YouTube):
-            if yt.length > 60 * 15:
-                return False
-
-            return True
-
-        return [r for r in results if allow(r)]
-
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
             self.vlc.stop()
@@ -109,7 +92,7 @@ class Spotdj:
         self.downloader.cleanup()
 
 
-playlist_url = "https://open.spotify.com/playlist/08sR2Q2jOLwgo7SylDtZIq?si=50c22033a8624e9e"
+playlist_url = "https://open.spotify.com/playlist/6ZSUmnKZO8RqQMaxNq6cZf?si=bcd3206b488e489b"
 
 with Spotdj() as spotdj:
     asyncio.run(spotdj.download_playlist(playlist_url))
