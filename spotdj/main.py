@@ -15,6 +15,7 @@ from spotdl.utils.metadata import set_id3_mp3
 from spotdj.converter import Converter
 from spotdj.database import Database, SongEntry
 from spotdj.downloader import Downloader
+from spotdj.playlists import store_playlist
 from spotdj.searcher import Searcher
 from spotdj.vlc import Vlc
 from spotdj.vlc_selector import VlcSelector
@@ -41,12 +42,13 @@ class Spotdj:
 
     async def download_playlist(self, playlist_url: str):
         playlist = Playlist.from_url(playlist_url)
+        playlist_metadata = Playlist.get_metadata(playlist_url)
 
         tasks = []
         for song in playlist.songs:
             song_entry = self.database.get_song(song.song_id)
             if song_entry is not None:
-                if song_entry.filename.exists():
+                if song_entry.file.exists():
                     print("Skipping {}".format(song.display_name))
                     continue
                 else:
@@ -55,6 +57,8 @@ class Spotdj:
             tasks.append(self.download_song(song))
 
         await asyncio.gather(*tasks)
+
+        store_playlist(self.database, playlist, Path("{}.m3u".format(playlist_metadata["name"])))
 
     async def download_song(self, song: Song):
         async with self.song_prefetch_semaphore:
