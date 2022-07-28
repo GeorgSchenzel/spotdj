@@ -12,6 +12,7 @@ mutagen = "^1.45.1"
 ffmpeg-python = "^0.2.0"
 spotipy = "^2.20.0"
 spotdl = "4.0.0rc2"
+prompt-toolkit = "^3.0.30"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

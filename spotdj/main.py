@@ -1,11 +1,8 @@
 import asyncio
 import concurrent.futures
-import json
 from asyncio import Semaphore
 from pathlib import Path
-from typing import List
 
-from pytube import Search, YouTube
 from spotdl import Spotdl, Song
 from spotdl.types import Playlist
 from spotdl.utils.config import DEFAULT_CONFIG
@@ -15,6 +12,7 @@ from spotdl.utils.metadata import set_id3_mp3
 from spotdj.converter import Converter
 from spotdj.database import Database, SongEntry
 from spotdj.downloader import Downloader
+from spotdj.name_selector import NameSelector
 from spotdj.playlists import store_playlist
 from spotdj.searcher import Searcher
 from spotdj.vlc import Vlc
@@ -32,6 +30,7 @@ class Spotdj:
         self.spotdl = Spotdl(client_id=DEFAULT_CONFIG["client_id"], client_secret=DEFAULT_CONFIG["client_secret"])
         self.vlc = Vlc()
         self.vlc_selector = VlcSelector(self.vlc)
+        self.name_selector = NameSelector()
 
         self.searcher = Searcher(self.thread_executor, additional_queries=["extended", "club"])
         self.downloader = Downloader(Path("./tmp"), self.thread_executor)
@@ -66,9 +65,11 @@ class Spotdj:
             paths = await self.downloader.download_async(results)
             chosen = await self.vlc_selector.choose_from(song, paths)
             if chosen == -1:
+                self.name_selector.cancel()
                 return
 
             filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
+            filename = await self.name_selector.select(filename)
 
             await self.converter.to_mp3_async(paths[chosen], filename)
 
@@ -80,6 +81,7 @@ class Spotdj:
                 path.unlink()
 
             self.database.store_song(SongEntry(song.song_id, filename, results[chosen].watch_url))
+            print("Stored {}".format(song.display_name))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         try:
