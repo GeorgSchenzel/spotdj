@@ -16,14 +16,23 @@ class NameSelector:
         if self.task is not None:
             self.task.cancel()
 
-    async def select(self, default: Path) -> Path:
+    @staticmethod
+    def smart_naming(file_name: str, download_name: str) -> str:
+        if "extended" not in file_name.lower() and "extended" in download_name.lower():
+            file_name += " (Extended Mix)"
+
+        return file_name
+
+    async def select(self, default: Path, downloaded: Path) -> Path:
         self.cancel()
+
+        default = default.with_stem(NameSelector.smart_naming(default.stem, downloaded.stem))
 
         async with self.lock:
             with patch_stdout():
-                self.task = asyncio.create_task(self.session.prompt_async('Filename: ', default=str(default)))
+                self.task = asyncio.create_task(self.session.prompt_async('Filename: ', default=default.stem))
 
                 try:
-                    return Path(await self.task)
+                    return default.with_stem(await self.task)
                 except CancelledError:
                     return default

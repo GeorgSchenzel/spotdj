@@ -69,7 +69,7 @@ class Spotdj:
                 return
 
             filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
-            filename = await self.name_selector.select(filename)
+            filename = await self.name_selector.select(filename, paths[chosen])
 
             await self.converter.to_mp3_async(paths[chosen], filename)
 
