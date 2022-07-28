@@ -25,7 +25,9 @@ def create_m3u_content(database: Database, song_list: List[Song]) -> str:
 
     text = ""
     for song in song_list:
-        text += str(database.get_song(song.song_id).file) + "\n"
+        stored = database.get_song(song.song_id)
+        if stored:
+            text += str(database.get_song(song.song_id).file) + "\n"
 
     return text
 

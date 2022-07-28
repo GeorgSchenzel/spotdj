@@ -65,6 +65,8 @@ class Spotdj:
             results = await self.searcher.search_async(create_search_query(song, "{artist} - {title}", False))
             paths = await self.downloader.download_async(results)
             chosen = await self.vlc_selector.choose_from(song, paths)
+            if chosen == -1:
+                return
 
             filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
 

@@ -13,17 +13,20 @@ class VlcSelector:
         self.vlc = vlc
 
     async def choose_from(self, song: Song, paths: List[Path]) -> int:
-        async with self.lock:
-            print("Choose {}".format(song.display_name))
-            self.vlc.client.clear()
-            for path in paths:
-                self.vlc.client.enqueue(str(path))
+        try:
+            async with self.lock:
+                print("Choose {}".format(song.display_name))
+                self.vlc.client.clear()
+                for path in paths:
+                    self.vlc.client.enqueue(str(path))
 
-            # keep alive
-            while not self.vlc.is_paused():
-                await asyncio.sleep(0.5)
+                # keep alive
+                while not self.vlc.is_paused():
+                    await asyncio.sleep(0.5)
 
-            chosen = self.vlc.client.info()["data"]["track_number"]
-            self.vlc.client.clear()
+                chosen = self.vlc.client.info()["data"]["track_number"]
+                self.vlc.client.clear()
 
-            return chosen
+                return chosen
+        except ConnectionAbortedError:
+            return -1
