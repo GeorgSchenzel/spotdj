@@ -18,6 +18,9 @@ class NameSelector:
 
     @staticmethod
     def smart_naming(file_name: str, download_name: str) -> str:
+        if file_name.lower().endswith("mix") and file_name.count(" - ") > 1:
+            file_name = " (".join(file_name.rsplit(" - ", 1)) + ")"
+
         if "extended" not in file_name.lower() and "extended" in download_name.lower():
             file_name += " (Extended Mix)"
 

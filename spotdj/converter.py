@@ -17,7 +17,7 @@ class Converter:
         stream = ffmpeg.input(input_path)
         stream = ffmpeg.filter(stream, 'loudnorm', print_format='json')
         stream = stream.output('-', f='null')
-        _, out = stream.run(capture_stderr=True)
+        _,  out = stream.run(capture_stderr=True)
         out = out.decode()
         jsn = '{' + out.split('{')[1].split('}')[0] + '}'
 

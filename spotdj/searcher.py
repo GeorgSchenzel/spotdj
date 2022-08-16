@@ -9,7 +9,7 @@ from pytube import Search, YouTube
 
 
 class Searcher:
-    def __init__(self, executor: ThreadPoolExecutor, additional_queries: List[str], primary_results=5, secondary_results=2):
+    def __init__(self, executor: ThreadPoolExecutor, additional_queries: List[str], primary_results=4, secondary_results=4):
         self.thread_executor = executor
         self.additional_queries = additional_queries
         self.primary_results = primary_results

@@ -1,8 +1,7 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-
-from spotdl.types import Playlist
+import shutil
 
 
 @dataclass
@@ -27,6 +26,9 @@ class Database:
         }
 
         if self.path.exists():
+            # make backups you idiot
+            shutil.copy(self.path, self.path.with_suffix(".backup"))
+
             with open(self.path, "r") as openfile:
                 self.data = json.load(openfile)
 
@@ -46,7 +48,7 @@ class Database:
         return SongEntry(song_id, Path(entry["filename"]), entry["download_url"])
 
     def store_song(self, song: SongEntry):
-        self.songs[song.song_id] = {"filename": str(song.file), "download_url": song.download_url}
+        self.songs[song.song_id] = {"filename": str(song.file.name), "download_url": song.download_url}
         self.save()
 
     def delete_song(self, song_id: str):
@@ -58,5 +60,5 @@ class Database:
             json.dump(self.data, outfile, indent=2)
 
     def store_playlist(self, playlist: PlaylistEntry):
-        self.playlists[playlist.playlist_id] = {"m3u_file": str(playlist.m3u_file)}
+        self.playlists[playlist.playlist_id] = {"m3u_file": str(playlist.m3u_file.name)}
         self.save()

@@ -1,12 +1,15 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import List
+from time import sleep
+from typing import List, Optional
 
 import mutagen
 import requests
+from mutagen import MutagenError
 from mutagen.mp4 import MP4Cover
-from pytube import YouTube, StreamQuery
+from pytube import YouTube, StreamQuery, Stream
+from pytube.exceptions import LiveStreamError
 
 
 def human_format(num) -> str:
@@ -26,21 +29,39 @@ class Downloader:
         self.executor = executor
         self.paths = [] # type: List[Path]
 
-    def download_search_result(self, result_number: int, yt: YouTube) -> Path:
-        streams = StreamQuery(yt.fmt_streams)
-        audio_stream = streams.get_audio_only()
-        path = audio_stream.download(output_path=str(self.location), filename_prefix="{} ".format(result_number))
-
+    def set_metadata(self, path: str, yt: YouTube, result_number: int, audio_stream: Stream):
         mutagen_file = mutagen.File(path, easy=True)
         mutagen_file["artist"] = yt.author
         mutagen_file["tracknumber"] = str(result_number)
         mutagen_file["description"] = "Bitrate: {}, Views: {}".format(audio_stream.abr, human_format(yt.views))
         mutagen_file.save()
 
+        sleep(1)
+
         thumbnail_data = requests.get(yt.thumbnail_url).content
         mutagen_file = mutagen.File(path)
         mutagen_file["covr"] = [MP4Cover(thumbnail_data)]
         mutagen_file.save()
+
+    def download_search_result(self, result_number: int, yt: YouTube) -> Optional[Path]:
+        try:
+            streams = StreamQuery(yt.fmt_streams)
+
+            audio_stream = streams.get_audio_only()
+            path = audio_stream.download(output_path=str(self.location), filename_prefix="{} ".format(result_number))
+        except KeyError:
+            return None
+        except LiveStreamError:
+            return None
+
+        # wait for the previous operation to be completed
+        sleep(0.2)
+
+        try:
+            self.set_metadata(path, yt, result_number, audio_stream)
+        except MutagenError:
+            sleep(4)
+            self.set_metadata(path, yt, result_number, audio_stream)
 
         return Path(path)
 
@@ -55,7 +76,8 @@ class Downloader:
         for i, yt in enumerate(yts):
             tasks.append(self.download_search_result_async(i, yt))
 
-        return list(await asyncio.gather(*tasks))
+        res: List[Path] = list(await asyncio.gather(*tasks))
+        return [x for x in res if x is not None]
 
     def cleanup(self):
         for path in self.paths:
