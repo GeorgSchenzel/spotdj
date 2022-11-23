@@ -1,4 +1,4 @@
-__version__ = '0.1.0'
+__version__ = "0.1.0"
 
 import asyncio
 import concurrent.futures
@@ -30,12 +30,17 @@ class Spotdj:
 
         self.database = Database(self.location / "spotdj.json")
 
-        self.spotdl = Spotdl(client_id=DEFAULT_CONFIG["client_id"], client_secret=DEFAULT_CONFIG["client_secret"])
+        self.spotdl = Spotdl(
+            client_id=DEFAULT_CONFIG["client_id"],
+            client_secret=DEFAULT_CONFIG["client_secret"],
+        )
         self.vlc = Vlc()
         self.vlc_selector = VlcSelector(self.vlc)
         self.name_selector = NameSelector()
 
-        self.searcher = Searcher(self.thread_executor, additional_queries=["extended", "club"])
+        self.searcher = Searcher(
+            self.thread_executor, additional_queries=["extended", "club"]
+        )
         self.downloader = Downloader(self.location / "tmp", self.thread_executor)
         self.converter = Converter(self.thread_executor)
 
@@ -67,7 +72,11 @@ class Spotdj:
 
         await asyncio.gather(*tasks)
 
-        store_playlist(self.database, playlist, self.location / Path("{}.m3u".format(playlist_metadata["name"])))
+        store_playlist(
+            self.database,
+            playlist,
+            self.location / Path("{}.m3u".format(playlist_metadata["name"])),
+        )
         print("Stored Playlist {}".format(playlist_metadata["name"]))
 
     async def download_song(self, song: Song):
@@ -76,14 +85,18 @@ class Spotdj:
                 if self.stopped:
                     return
 
-                results = await self.searcher.search_async(create_search_query(song, "{artist} - {title}", False))
+                results = await self.searcher.search_async(
+                    create_search_query(song, "{artist} - {title}", False)
+                )
                 paths = await self.downloader.download_async(results)
                 chosen = await self.vlc_selector.choose_from(song, paths)
                 if chosen == -1:
                     self.name_selector.cancel()
                     raise Exception("Closed VLC")
 
-                filename = create_file_name(song, "{artists} - {title}.{output-ext}", "mp3")
+                filename = create_file_name(
+                    song, "{artists} - {title}.{output-ext}", "mp3"
+                )
                 filename = await self.name_selector.select(filename, paths[chosen])
                 filename = self.location / filename
 
@@ -96,11 +109,17 @@ class Spotdj:
                 for path in paths:
                     path.unlink()
 
-                self.database.store_song(SongEntry(song.song_id, filename, results[chosen].watch_url))
+                self.database.store_song(
+                    SongEntry(song.song_id, filename, results[chosen].watch_url)
+                )
                 print("Stored {}".format(song.display_name))
 
         except Exception as e:
-            print("\nEncountered an exception while downloading {}".format(song.display_name))
+            print(
+                "\nEncountered an exception while downloading {}".format(
+                    song.display_name
+                )
+            )
             logging.exception(e)
             print("Stopping\n")
             self.stopped = True

@@ -29,11 +29,15 @@ class NameSelector:
     async def select(self, default: Path, downloaded: Path) -> Path:
         self.cancel()
 
-        default = default.with_stem(NameSelector.smart_naming(default.stem, downloaded.stem))
+        default = default.with_stem(
+            NameSelector.smart_naming(default.stem, downloaded.stem)
+        )
 
         async with self.lock:
             with patch_stdout():
-                self.task = asyncio.create_task(self.session.prompt_async('Filename: ', default=default.stem))
+                self.task = asyncio.create_task(
+                    self.session.prompt_async("Filename: ", default=default.stem)
+                )
 
                 try:
                     return default.with_stem(await self.task)

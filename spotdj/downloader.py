@@ -18,22 +18,25 @@ def human_format(num) -> str:
         magnitude += 1
         num /= 1000.0
     # add more suffixes if you need them
-    return '%.2f%s' % (num, ['', 'K', 'M', 'G', 'T', 'P'][magnitude])
+    return "%.2f%s" % (num, ["", "K", "M", "G", "T", "P"][magnitude])
 
 
 class Downloader:
-
     def __init__(self, location: Path, executor: ThreadPoolExecutor):
         self.location = location
         self.threads = 5
         self.executor = executor
-        self.paths = [] # type: List[Path]
+        self.paths = []  # type: List[Path]
 
-    def set_metadata(self, path: str, yt: YouTube, result_number: int, audio_stream: Stream):
+    def set_metadata(
+        self, path: str, yt: YouTube, result_number: int, audio_stream: Stream
+    ):
         mutagen_file = mutagen.File(path, easy=True)
         mutagen_file["artist"] = yt.author
         mutagen_file["tracknumber"] = str(result_number)
-        mutagen_file["description"] = "Bitrate: {}, Views: {}".format(audio_stream.abr, human_format(yt.views))
+        mutagen_file["description"] = "Bitrate: {}, Views: {}".format(
+            audio_stream.abr, human_format(yt.views)
+        )
         mutagen_file.save()
 
         sleep(1)
@@ -48,7 +51,10 @@ class Downloader:
             streams = StreamQuery(yt.fmt_streams)
 
             audio_stream = streams.get_audio_only()
-            path = audio_stream.download(output_path=str(self.location), filename_prefix="{} ".format(result_number))
+            path = audio_stream.download(
+                output_path=str(self.location),
+                filename_prefix="{} ".format(result_number),
+            )
         except KeyError:
             return None
         except LiveStreamError:
@@ -65,8 +71,12 @@ class Downloader:
 
         return Path(path)
 
-    async def download_search_result_async(self, result_number: int, yt: YouTube) -> Path:
-        path = await asyncio.get_event_loop().run_in_executor(self.executor, self.download_search_result, result_number, yt)
+    async def download_search_result_async(
+        self, result_number: int, yt: YouTube
+    ) -> Path:
+        path = await asyncio.get_event_loop().run_in_executor(
+            self.executor, self.download_search_result, result_number, yt
+        )
         self.paths.append(path)
 
         return path

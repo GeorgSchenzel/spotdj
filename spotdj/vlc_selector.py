@@ -7,6 +7,7 @@ from spotdl import Song
 
 from spotdj.vlc import Vlc
 
+
 class VlcSelector:
     def __init__(self, vlc: Vlc):
         self.lock = Lock()

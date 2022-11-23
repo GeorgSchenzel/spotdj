@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import List
 
-import spotdl.types
 from spotdl import Song
 from spotdl.types import Playlist
 from spotipy import Spotify

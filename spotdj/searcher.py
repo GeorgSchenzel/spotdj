@@ -1,15 +1,20 @@
 import asyncio
-import math
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 from itertools import islice
-from typing import List, Any
+from typing import List
 
 from pytube import Search, YouTube
 
 
 class Searcher:
-    def __init__(self, executor: ThreadPoolExecutor, additional_queries: List[str], primary_results=4, secondary_results=4):
+    def __init__(
+        self,
+        executor: ThreadPoolExecutor,
+        additional_queries: List[str],
+        primary_results=4,
+        secondary_results=4,
+    ):
         self.thread_executor = executor
         self.additional_queries = additional_queries
         self.primary_results = primary_results
@@ -22,7 +27,11 @@ class Searcher:
 
         searches = [SearchOperation(self.primary_results, query)]
         for additional in self.additional_queries:
-            searches.append(SearchOperation(self.secondary_results, "{} {}".format(query, additional)))
+            searches.append(
+                SearchOperation(
+                    self.secondary_results, "{} {}".format(query, additional)
+                )
+            )
 
         for search in searches:
             result = Search(search.query).results
@@ -45,4 +54,6 @@ class Searcher:
     # we could parallelize all searches but it doesn't take that long
     # so we don't risk getting rate limited
     async def search_async(self, query: str) -> List[YouTube]:
-        return await asyncio.get_event_loop().run_in_executor(self.thread_executor, self.search, query)
+        return await asyncio.get_event_loop().run_in_executor(
+            self.thread_executor, self.search, query
+        )

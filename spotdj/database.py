@@ -20,10 +20,7 @@ class PlaylistEntry:
 class Database:
     def __init__(self, path: Path):
         self.path = path
-        self.data = {
-            "songs": {},
-            "playlists": {}
-        }
+        self.data = {"songs": {}, "playlists": {}}
 
         if self.path.exists():
             # make backups you idiot
@@ -48,7 +45,10 @@ class Database:
         return SongEntry(song_id, Path(entry["filename"]), entry["download_url"])
 
     def store_song(self, song: SongEntry):
-        self.songs[song.song_id] = {"filename": str(song.file.name), "download_url": song.download_url}
+        self.songs[song.song_id] = {
+            "filename": str(song.file.name),
+            "download_url": song.download_url,
+        }
         self.save()
 
     def delete_song(self, song_id: str):
