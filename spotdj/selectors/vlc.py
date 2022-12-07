@@ -2,16 +2,14 @@ import asyncio
 from asyncio import Lock
 from pathlib import Path
 from typing import List
-
 from spotdl import Song
+from spotdj.selectors.selectors import Selector
 
-from spotdj.vlc import Vlc
 
-
-class VlcSelector:
-    def __init__(self, vlc: Vlc):
+class Vlc(Selector):
+    def __init__(self):
         self.lock = Lock()
-        self.vlc = vlc
+        self.vlc = Vlc()
 
     async def choose_from(self, song: Song, paths: List[Path]) -> int:
         try:

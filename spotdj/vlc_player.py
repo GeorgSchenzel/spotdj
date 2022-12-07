@@ -3,7 +3,7 @@ import subprocess
 from python_telnet_vlc import VLCTelnet
 
 
-class Vlc:
+class VlcPlayer:
     def __init__(self):
         self.server = subprocess.Popen(
             [

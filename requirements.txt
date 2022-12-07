@@ -1,1 +1,2 @@
 spotdl
+python_telnet_vlc
