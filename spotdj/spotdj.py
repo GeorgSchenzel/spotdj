@@ -33,7 +33,7 @@ class Spotdj:
         self.song_prefetch_semaphore = Semaphore(5)
 
         self.database = Database(self.location / "spotdj.json")
-        self.metadata_provider = MetadataProvider(self.database)
+        self.metadata_provider = MetadataProvider(self.database, self.thread_executor)
 
         self.spotdl = Spotdl(
             client_id=DEFAULT_CONFIG["client_id"],
@@ -94,6 +94,7 @@ class Spotdj:
                 # use pytube to download the song
                 yt = PyTubeYouTube(url)
                 tmp_path = await self.downloader.download_search_result_async(yt)
+                print("Downloaded {}".format(song.display_name))
 
                 download_filename = create_file_name(
                     song, "{artists} - {title}.{output-ext}", "mp3"
@@ -101,6 +102,7 @@ class Spotdj:
                 download_filename = self.location / download_filename
 
                 await self.converter.to_mp3_async(tmp_path, download_filename)
+                print("Converted {}".format(song.display_name))
 
                 # store the spotify song id as a comment
                 song.download_url = song.song_id

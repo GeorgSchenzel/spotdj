@@ -1,3 +1,6 @@
+import asyncio
+from asyncio import Semaphore, sleep
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 from spotdl.types import Song
@@ -9,10 +12,12 @@ from spotdj.database import Database, SongEntry
 
 
 class MetadataProvider:
-    def __init__(self, database: Database):
+    def __init__(self, database: Database, executor: ThreadPoolExecutor):
         self.database = database
         self.network = rymscraper.RymNetwork()
         self.browser = self.network.browser
+        self.executor = executor
+        self.semaphore = Semaphore(1)
 
     def fetch_rym_data(self, song):
         artist_url = get_url_from_artist_name(self.browser, song.artist)
@@ -61,3 +66,14 @@ class MetadataProvider:
         song_entry.album_genres = album_genres
 
         return song_entry
+
+    async def update_metadata_async(self, song: Song, song_entry: SongEntry) -> SongEntry:
+        async with self.semaphore:
+            song_entry = await asyncio.get_event_loop().run_in_executor(
+                self.executor, self.update_metadata, song, song_entry
+            )
+
+            # sleep to reduce chance of getting rate limited or even ip banned
+            await sleep(1)
+
+            return song_entry
