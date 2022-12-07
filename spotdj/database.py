@@ -1,7 +1,8 @@
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import shutil
+from typing import List
 
 
 @dataclass
@@ -9,6 +10,9 @@ class SongEntry:
     song_id: str
     file: Path
     download_url: str
+    genres: List[str] = field(default_factory=list)
+    album_genres: List[str] = field(default_factory=list)
+    descriptors: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -42,12 +46,20 @@ class Database:
             return None
 
         entry = self.songs[song_id]
-        return SongEntry(song_id, Path(entry["filename"]), entry["download_url"])
+        return SongEntry(song_id, Path(
+                         entry.get("filename", "")),
+                         entry.get("download_url", ""),
+                         entry.get("genres", []),
+                         entry.get("album_genres", []),
+                         entry.get("descriptors", []))
 
     def store_song(self, song: SongEntry):
         self.songs[song.song_id] = {
             "filename": str(song.file.name),
             "download_url": song.download_url,
+            "genres": song.genres,
+            "album_genres": song.album_genres,
+            "descriptors": song.descriptors
         }
         self.save()
 

@@ -2,3 +2,4 @@ spotdl
 python_telnet_vlc
 ffmpeg-python
 requests
+git+ssh://git@github.com/dbeley/rymscraper.git

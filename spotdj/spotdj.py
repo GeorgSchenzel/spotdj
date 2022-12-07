@@ -18,7 +18,7 @@ from pytube import YouTube as PyTubeYouTube
 from spotdj.converter import Converter
 from spotdj.database import Database, SongEntry
 from spotdj.downloader import Downloader
-from spotdj.metadata_setter import set_metadata
+from spotdj.metadata_provider import MetadataProvider
 from spotdj.playlists import store_playlist
 from spotdj.searcher import Searcher
 from spotdj.selectors.bestmatch import BestMatch
@@ -33,6 +33,7 @@ class Spotdj:
         self.song_prefetch_semaphore = Semaphore(5)
 
         self.database = Database(self.location / "spotdj.json")
+        self.metadata_provider = MetadataProvider(self.database)
 
         self.spotdl = Spotdl(
             client_id=DEFAULT_CONFIG["client_id"],
@@ -107,12 +108,12 @@ class Spotdj:
                 # first get basic info from spotify song object
                 set_id3_mp3(download_filename, song)
 
-                # then override with our own logic
-                set_metadata(download_filename, song)
+                song_entry = SongEntry(song.song_id, download_filename, yt.watch_url)
 
-                self.database.store_song(
-                    SongEntry(song.song_id, download_filename, yt.watch_url)
-                )
+                # then override with our own logic
+                song_entry = self.metadata_provider.update_metadata(song, song_entry)
+
+                self.database.store_song(song_entry)
                 print("Stored {}".format(song.display_name))
 
         except Exception as e:
