@@ -1,2 +1,4 @@
 spotdl
 python_telnet_vlc
+ffmpeg-python
+requests

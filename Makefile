@@ -1,5 +1,5 @@
 venv-python: ## Install Python 3 venv
-	virtualenv -p /usr/bin/python3 venv
+	python -m venv venv
 
 venv-dev: venv-python ## Install Python 3 dev dependencies
 	./venv/bin/pip install -r dev-requirements.txt
@@ -44,4 +44,4 @@ release-note: ## Generate release note
 # ===================================================================
 
 run:
-	./venv/bin/python -m glances
+	./venv/bin/python -m spotdj
