@@ -29,6 +29,9 @@ class Downloader:
             streams = StreamQuery(yt.fmt_streams)
 
             audio_stream = streams.get_audio_only()
+            if audio_stream is None:
+                return None
+
             path = audio_stream.download(
                 output_path=str(self.location),
             )
