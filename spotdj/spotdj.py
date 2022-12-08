@@ -34,7 +34,9 @@ class Spotdj:
         self.song_prefetch_semaphore = Semaphore(5)
 
         self.database = Database(self.location)
-        self.metadata_provider = MetadataProvider(self.database, self.thread_executor, timeout=rym_timeout)
+
+        if use_rym_metadata:
+            self.metadata_provider = MetadataProvider(self.database, self.thread_executor, timeout=rym_timeout)
 
         self.spotdl = Spotdl(
             client_id=DEFAULT_CONFIG["client_id"],
@@ -54,6 +56,10 @@ class Spotdj:
         return self
 
     async def update_metadata(self, timeout=5):
+        if not self.use_rym_metadata:
+            print("Error, use_rym_metadata is set to False.")
+            return
+
         for song_entry in self.database.get_songs():
 
             if song_entry.rym_url is not None:
@@ -112,6 +118,9 @@ class Spotdj:
 
                 # use spotdl for searching and selecting the best result
                 url = SpotDlYoutube().search(song)
+                if url is None:
+                    print("Failed, not found {}".format(song.display_name))
+                    return
 
                 # use pytube to download the song
                 yt = PyTubeYouTube(url)
