@@ -2,4 +2,7 @@ spotdl
 python_telnet_vlc
 ffmpeg-python
 requests
+colorama
+tqdm
+
 git+ssh://git@github.com/dbeley/rymscraper.git

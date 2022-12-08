@@ -6,6 +6,7 @@ setup(name="Spotdj",
       install_requires=[
             "spotdl",
             "ffmpeg-python",
+            "colorama",
             "rymscraper @ git+ssh://git@github.com/dbeley/rymscraper.git"
       ],
       )

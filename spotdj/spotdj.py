@@ -23,15 +23,20 @@ from spotdj.playlists import store_playlist
 from spotdj.searcher import Searcher
 from spotdj.selectors.bestmatch import BestMatch
 
+from colorama import Fore
+from colorama import Style
+
 
 class Spotdj:
-    def __init__(self, location=Path("./spotdj-download"), rym_timeout=5, use_rym_metadata=True):
+    def __init__(self, location=Path("./spotdj-download"), spotify_timeout=5, rym_timeout=5, use_rym_metadata=True):
         self.location = location
         self.location.mkdir(exist_ok=True)
         self.use_rym_metadata = use_rym_metadata
 
         self.thread_executor = concurrent.futures.ThreadPoolExecutor()
         self.song_prefetch_semaphore = Semaphore(5)
+        self.counter_lock = asyncio.Lock()
+        self.counter = 0
 
         self.database = Database(self.location)
 
@@ -63,7 +68,7 @@ class Spotdj:
         for song_entry in self.database.get_songs():
 
             if song_entry.rym_url is not None:
-                print("Skipping {}".format(song_entry.file))
+                print(f"{Fore.LIGHTBLACK_EX}  Skipping {song.display_name}")
                 continue
 
             # use this semaphore to avoid getting rate limited by spotify
@@ -84,31 +89,47 @@ class Spotdj:
         if self.stopped:
             return
 
-        playlist = Playlist.from_url(playlist_url)
-        playlist_metadata = Playlist.get_metadata(playlist_url)
+        async def increment_counter():
+            nonlocal counter
 
-        print("Downloading Playlist {}".format(playlist_metadata["name"]))
+            async with self.counter_lock:
+                counter += 1
+                if (counter % 10) == 0:
+                    print(f"{Fore.LIGHTBLACK_EX}({counter}/{playlist.length}) {counter / playlist.length * 100:3.1f}% {playlist.name}{Style.RESET_ALL}")
+
+        async def download_song(s):
+            await self.download_song(s)
+            if not self.stopped:
+                await increment_counter()
+
+        counter = 0
+
+        playlist = Playlist.from_url(playlist_url)
+        playlist_name = playlist.name
+
+        print(f"{Fore.GREEN}Starting{Style.RESET_ALL} playlist {playlist_name}")
 
         tasks = []
         for song in playlist.songs:
             song_entry = self.database.get_song(song.song_id)
             if song_entry is not None:
                 if self.location.joinpath(song_entry.file).exists():
-                    print("Skipping {}".format(song.display_name))
+                    print(f"{Fore.LIGHTBLACK_EX}  Skipping {song.display_name}{Style.RESET_ALL}")
+                    await increment_counter()
                     continue
                 else:
                     self.database.delete_song(song.song_id)
 
-            tasks.append(self.download_song(song))
+            tasks.append(download_song(song))
 
         await asyncio.gather(*tasks)
 
         store_playlist(
             self.database,
             playlist,
-            self.location / Path("{}.m3u".format(playlist_metadata["name"])),
+            self.location / Path("{}.m3u".format(playlist_name)),
         )
-        print("Stored Playlist {}".format(playlist_metadata["name"]))
+        print(f"{Fore.GREEN}Finished{Style.RESET_ALL} playlist {playlist_name}\n")
 
     async def download_song(self, song: Song):
         try:
@@ -119,13 +140,16 @@ class Spotdj:
                 # use spotdl for searching and selecting the best result
                 url = SpotDlYoutube().search(song)
                 if url is None:
-                    print("Failed, not found {}".format(song.display_name))
+                    print(f"{Fore.RED}  Failed{Style.RESET_ALL}, not found {song.display_name}")
                     return
 
                 # use pytube to download the song
                 yt = PyTubeYouTube(url)
                 tmp_path = await self.downloader.download_search_result_async(yt)
-                print("Downloaded {}".format(song.display_name))
+                if tmp_path is None:
+                    print(f"{Fore.RED}  Failed{Style.RESET_ALL}, download error {song.display_name}")
+                    return
+                #print(f"{Fore.LIGHTBLACK_EX}  Downloaded {song.display_name}")
 
                 download_filename = create_file_name(
                     song, "{artists} - {title}.{output-ext}", "mp3"
@@ -133,7 +157,7 @@ class Spotdj:
                 download_filename = self.location / download_filename
 
                 await self.converter.to_mp3_async(tmp_path, download_filename)
-                print("Converted {}".format(song.display_name))
+                #print(f"{Fore.LIGHTBLACK_EX}  Converted {song.display_name}")
 
                 # store the spotify song id as a comment
                 song.download_url = song.song_id
@@ -148,7 +172,8 @@ class Spotdj:
                     song_entry = self.metadata_provider.update_metadata(song, song_entry)
 
                 self.database.store_song(song_entry)
-                print("Stored {}".format(song.display_name))
+
+                print(f"{Fore.GREEN}  Stored{Style.RESET_ALL} {song.display_name}")
 
         except Exception as e:
             print(
