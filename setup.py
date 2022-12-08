@@ -2,5 +2,10 @@ from distutils.core import setup
 
 setup(name="Spotdj",
       version="0.1.0",
-      packages=["spotdj"]
+      packages=["spotdj"],
+      install_requires=[
+            "spotdl",
+            "ffmpeg-python",
+            "rymscraper @ git+ssh://git@github.com/dbeley/rymscraper.git"
+      ],
       )
