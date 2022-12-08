@@ -7,4 +7,5 @@ playlist_url = "https://open.spotify.com/playlist/4N2z4bAv5KOYdCzB6cM9zL?si=a169
 
 if __name__ == "__main__":
     with Spotdj() as spotdj:
-        asyncio.run(spotdj.download_playlist(playlist_url))
+        #asyncio.run(spotdj.download_playlist(playlist_url))
+        asyncio.run(spotdj.update_metadata())

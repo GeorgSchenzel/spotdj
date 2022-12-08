@@ -52,6 +52,27 @@ class Spotdj:
     def __enter__(self):
         return self
 
+    async def update_metadata(self):
+        for song_entry in self.database.get_songs():
+
+            if song_entry.rym_url is not None:
+                print("Skipping {}".format(song_entry.file))
+                continue
+
+            # use this semaphore to avoid getting rate limited by spotify
+            async with self.song_prefetch_semaphore:
+                song = await asyncio.get_event_loop().run_in_executor(
+                    self.thread_executor, Song.from_url, f"https://open.spotify.com/track/{song_entry.song_id}"
+                )
+
+                song_entry = await self.metadata_provider.update_metadata_async(song, song_entry)
+                self.database.store_song(song_entry)
+
+                if song_entry.rym_url == "not found":
+                    print("Failed {}".format(song.display_name))
+                else:
+                    print("Success {}".format(song.display_name))
+
     async def download_playlist(self, playlist_url: str):
         if self.stopped:
             return
