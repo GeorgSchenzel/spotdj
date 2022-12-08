@@ -25,15 +25,15 @@ from spotdj.selectors.bestmatch import BestMatch
 
 
 class Spotdj:
-    def __init__(self, location=Path("./spotdj-download")):
+    def __init__(self, location=Path("./spotdj-download"), rym_timeout=5):
         self.location = location
         self.location.mkdir(exist_ok=True)
 
         self.thread_executor = concurrent.futures.ThreadPoolExecutor()
         self.song_prefetch_semaphore = Semaphore(5)
 
-        self.database = Database(self.location / "spotdj.json")
-        self.metadata_provider = MetadataProvider(self.database, self.thread_executor)
+        self.database = Database(self.location)
+        self.metadata_provider = MetadataProvider(self.database, self.thread_executor, timeout=rym_timeout)
 
         self.spotdl = Spotdl(
             client_id=DEFAULT_CONFIG["client_id"],
@@ -52,7 +52,7 @@ class Spotdj:
     def __enter__(self):
         return self
 
-    async def update_metadata(self):
+    async def update_metadata(self, timeout=5):
         for song_entry in self.database.get_songs():
 
             if song_entry.rym_url is not None:
