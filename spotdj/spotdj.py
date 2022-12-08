@@ -25,9 +25,10 @@ from spotdj.selectors.bestmatch import BestMatch
 
 
 class Spotdj:
-    def __init__(self, location=Path("./spotdj-download"), rym_timeout=5):
+    def __init__(self, location=Path("./spotdj-download"), rym_timeout=5, use_rym_metadata=True):
         self.location = location
         self.location.mkdir(exist_ok=True)
+        self.use_rym_metadata = use_rym_metadata
 
         self.thread_executor = concurrent.futures.ThreadPoolExecutor()
         self.song_prefetch_semaphore = Semaphore(5)
@@ -133,8 +134,9 @@ class Spotdj:
 
                 song_entry = SongEntry(song.song_id, download_filename, yt.watch_url)
 
-                # then override with our own logic
-                song_entry = self.metadata_provider.update_metadata(song, song_entry)
+                if self.use_rym_metadata:
+                    # then override with our own logic
+                    song_entry = self.metadata_provider.update_metadata(song, song_entry)
 
                 self.database.store_song(song_entry)
                 print("Stored {}".format(song.display_name))
