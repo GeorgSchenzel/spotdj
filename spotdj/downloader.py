@@ -65,5 +65,5 @@ class Downloader:
 
     def cleanup(self):
         for path in self.paths:
-            if path.exists():
+            if path is not None and path.exists():
                 path.unlink()
