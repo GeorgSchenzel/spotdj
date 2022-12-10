@@ -68,7 +68,7 @@ class Spotdj:
         for song_entry in self.database.get_songs():
 
             if song_entry.rym_url is not None:
-                print(f"{Fore.LIGHTBLACK_EX}  Skipping {song.display_name}")
+                print(f"{Fore.LIGHTBLACK_EX}Skipping {song_entry.file}{Style.RESET_ALL}")
                 continue
 
             # use this semaphore to avoid getting rate limited by spotify
@@ -79,11 +79,6 @@ class Spotdj:
 
                 song_entry = await self.metadata_provider.update_metadata_async(song, song_entry)
                 self.database.store_song(song_entry)
-
-                if song_entry.rym_url == "not found":
-                    print("Failed {}".format(song.display_name))
-                else:
-                    print("Success {}".format(song.display_name))
 
     async def download_playlist(self, playlist_url: str):
         if self.stopped:

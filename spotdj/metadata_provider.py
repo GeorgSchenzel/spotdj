@@ -10,6 +10,8 @@ from rapidfuzz import fuzz
 
 from spotdj.database import Database, SongEntry, ArtistCacheEntry
 import re
+from colorama import Fore
+from colorama import Style
 
 
 regex_remove_feat = re.compile("\(feat.*?\)")
@@ -27,7 +29,7 @@ class MetadataProvider:
     def fetch_artist_url_from_artist_name(self, artist):
         cached = self.database.read_cache(artist)
         if cached is not None:
-            print("Used cached url")
+            print(f"{Fore.LIGHTBLACK_EX}  used cached url{Style.RESET_ALL}")
             return cached.url
 
         try:
@@ -46,7 +48,7 @@ class MetadataProvider:
 
         cached = self.database.read_cache(artist)
         if cached is not None:
-            print("Used cached disco")
+            print(f"{Fore.LIGHTBLACK_EX}  used cached disco{Style.RESET_ALL}")
             return split_discography(cached.discography)
 
         self.browser.get_url(artist_url)
@@ -65,7 +67,6 @@ class MetadataProvider:
             return
 
         self.database.store_cache(artist, ArtistCacheEntry(url, discography))
-        print("Wrote to cache")
 
     def fetch_rym_data(self, song):
         artist_url = self.fetch_artist_url_from_artist_name(song.artist)
@@ -130,6 +131,11 @@ class MetadataProvider:
             song_entry = await asyncio.get_event_loop().run_in_executor(
                 self.executor, self.update_metadata, song, song_entry
             )
+
+            if song_entry.rym_url == "not found":
+                print(f"{Fore.RED}Failed {song.display_name}{Fore.LIGHTBLACK_EX}, now sleeping{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.GREEN}Success {song.display_name}{Fore.LIGHTBLACK_EX}, now sleeping{Style.RESET_ALL}")
 
             # sleep to reduce chance of getting rate limited or even ip banned
             await sleep(self.timeout)
