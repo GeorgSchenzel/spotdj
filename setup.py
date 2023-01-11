@@ -7,6 +7,6 @@ setup(name="Spotdj",
             "spotdl",
             "ffmpeg-python",
             "colorama",
-            "rymscraper @ git+ssh://git@github.com/dbeley/rymscraper.git"
+            "rymscraper @ git+https://github.com/dbeley/rymscraper.git@14708474abcea8ce91c83a0debf934bd37d19a8e"
       ],
       )
