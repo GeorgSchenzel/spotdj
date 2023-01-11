@@ -5,4 +5,4 @@ requests
 colorama
 tqdm
 
-git+ssh://git@github.com/dbeley/rymscraper.git
+git+https://github.com/dbeley/rymscraper.git@14708474abcea8ce91c83a0debf934bd37d19a8e
